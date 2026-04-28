@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>🎲 Stochastik Quest – Welt des Zufalls</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0b1023;
+    --bg-mid: #1a2148;
+    --accent-gold: #ffd23f;
+    --accent-pink: #ff3b8c;
+    --accent-cyan: #1de9ff;
+    --accent-green: #6affb6;
+    --accent-purple: #a05bff;
+  }
+  * { -webkit-tap-highlight-color: transparent; }
+  html, body { 
+    background: var(--bg-deep); 
+    font-family: 'Fredoka', sans-serif;
+    overflow-x: hidden;
+  }
+  .pixel { font-family: 'Press Start 2P', monospace; letter-spacing: 0.5px; }
+  .retro { font-family: 'VT323', monospace; }
+  .starfield {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(2px 2px at 20% 30%, #fff, transparent),
+      radial-gradient(1px 1px at 60% 70%, #fff, transparent),
+      radial-gradient(1px 1px at 50% 50%, #ffd23f, transparent),
+      radial-gradient(2px 2px at 80% 10%, #1de9ff, transparent),
+      radial-gradient(1px 1px at 90% 60%, #ff3b8c, transparent),
+      radial-gradient(1px 1px at 33% 80%, #fff, transparent),
+      radial-gradient(2px 2px at 15% 90%, #6affb6, transparent),
+      linear-gradient(180deg, #0b1023 0%, #1a2148 100%);
+    background-size: 200% 200%;
+    animation: drift 60s linear infinite;
+  }
+  @keyframes drift { 
+    0% { background-position: 0 0; } 
+    100% { background-position: 100% 100%; } 
+  }
+  @keyframes float { 
+    0%, 100% { transform: translateY(0); } 
+    50% { transform: translateY(-8px); } 
+  }
+  @keyframes wobble { 
+    0%, 100% { transform: rotate(-2deg); } 
+    50% { transform: rotate(2deg); } 
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255,210,63,0.4), 0 0 40px rgba(255,210,63,0.2); }
+    50% { box-shadow: 0 0 30px rgba(255,210,63,0.7), 0 0 60px rgba(255,210,63,0.4); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(-100vh) rotate(0); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+  @keyframes pop-in {
+    0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+    70% { transform: scale(1.15) rotate(10deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  @keyframes slide-up {
+    0% { transform: translateY(40px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes coin-spin {
+    0%, 100% { transform: rotateY(0deg); }
+    50% { transform: rotateY(180deg); }
+  }
+  @keyframes dice-roll {
+    0% { transform: rotate(0) scale(1); }
+    25% { transform: rotate(180deg) scale(1.2); }
+    50% { transform: rotate(360deg) scale(0.9); }
+    75% { transform: rotate(540deg) scale(1.1); }
+    100% { transform: rotate(720deg) scale(1); }
+  }
+  .float { animation: float 3s ease-in-out infinite; }
+  .wobble { animation: wobble 2s ease-in-out infinite; }
+  .glow { animation: pulse-glow 2s ease-in-out infinite; }
+  .shake { animation: shake 0.5s ease-in-out; }
+  .pop-in { animation: pop-in 0.5s cubic-bezier(.4, 1.8, .6, 1); }
+  .slide-up { animation: slide-up 0.4s ease-out; }
+  .dice-roll { animation: dice-roll 1s ease-out; }
+  
+  .btn-3d {
+    position: relative;
+    transition: all 0.1s ease;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.4);
+  }
+  .btn-3d:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.4);
+  }
+  .card-glass {
+    background: rgba(26, 33, 72, 0.85);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,210,63,0.3);
+  }
+  .pixel-border {
+    border-style: solid;
+    border-width: 4px;
+    image-rendering: pixelated;
+  }
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #1a2148; }
+  ::-webkit-scrollbar-thumb { background: #ffd23f; border-radius: 4px; }
+  
+  .map-path {
+    stroke-dasharray: 8 6;
+    animation: dash 20s linear infinite;
+  }
+  @keyframes dash {
+    to { stroke-dashoffset: -200; }
+  }
+  
+  .confetti {
+    position: fixed;
+    width: 10px; height: 10px;
+    pointer-events: none;
+    z-index: 1000;
+    animation: confetti-fall 3s linear forwards;
+  }
+  
+  /* Drag and Drop styles */
+  .drag-item {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+  }
+  .drag-item:active { cursor: grabbing; }
+  .drop-zone-active {
+    background: rgba(106, 255, 182, 0.2) !important;
+    border-color: #6affb6 !important;
+  }
+  
+  /* Math styling */
+  .math {
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    font-style: italic;
+  }
+  
+  input, button, select { font-family: inherit; }
+  
+  .keyword {
+    color: #ffd23f;
+    font-weight: 700;
+    text-shadow: 0 0 8px rgba(255,210,63,0.5);
+  }
+  
+  /* Avatar movement on map */
+  .avatar-marker {
+    transition: all 1.2s cubic-bezier(.34, 1.56, .64, 1);
+  }
+</style>
+</head>
+<body>
+<div class="starfield"></div>
+<div id="root" class="relative z-10"></div>
+
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+/* =========================================================
+   TRANSLATIONS
+   ========================================================= */
+const translations = {
+  de: {
+    appTitle: "Stochastik Quest",
+    subtitle: "Die Welt des Zufalls",
+    chooseLanguage: "Sprache",
+    welcome: "Willkommen, Wahrscheinlichkeits-Held:in!",
+    welcomeStory: "Im Königreich der Mathematik wütet das Chaos! Würfel rollen unkontrolliert, Münzen entscheiden Schicksale, und ungelöste Zufallsvariablen bedrohen das Land. Nur du kannst die Ordnung der Wahrscheinlichkeit wiederherstellen!",
+    enterName: "Wie heißt du, Held:in?",
+    yourName: "Dein Name",
+    randomNick: "🎲 Zufalls-Nickname",
+    chooseMode: "Wähle deinen Modus",
+    soloMode: "🎯 Einzelspieler",
+    teamMode: "👥 Team-Modus",
+    chooseAvatar: "Wähle deinen Avatar",
+    chooseColor: "Wähle deine Farbe",
+    startQuest: "Quest starten!",
+    home: "Karte",
+    levelLocked: "🔒 Gesperrt",
+    completeBefore: "Vorheriges Level abschließen!",
+    levelComplete: "Level geschafft!",
+    xpGained: "XP erhalten",
+    nextLevel: "Nächstes Level",
+    backToMap: "Zur Karte",
+    correct: "Richtig!",
+    incorrect: "Nicht ganz!",
+    hint: "Hinweis",
+    submit: "Prüfen",
+    continue: "Weiter",
+    yourAnswer: "Deine Antwort",
+    selectAll: "Wähle alle richtigen Aussagen",
+    completeWorksheet: "Arbeitsblatt-Phase",
+    worksheetText: "Bearbeite jetzt eine kurze Aufgabe in deinem Heft. Notiere dir Schlüsselbegriffe und Lösungswege!",
+    waitTime: "Bitte warte",
+    seconds: "Sekunden",
+    boss: "BOSS-LEVEL",
+    bossIntro: "Der Endgegner: Das Probe-Abitur!",
+    bossDescription: "Beweise dein Können in einer zeitbasierten Prüfung. Schaffe es in der Zeit!",
+    startBoss: "Boss herausfordern",
+    timeLeft: "Zeit",
+    certificate: "Zertifikat",
+    certTitle: "Urkunde der Stochastik-Meisterschaft",
+    certDescription: "verleihen wir hiermit",
+    certFor: "für die erfolgreiche Bewältigung der Welt des Zufalls",
+    downloadPDF: "📥 Als PDF herunterladen",
+    teacherMenu: "🔧 Lehrer-Menü",
+    teacherPassword: "Passwort",
+    unlockAll: "Alle Level freischalten",
+    skipTask: "Aufgabe überspringen",
+    showSolution: "Lösung anzeigen",
+    solution: "Lösung",
+    close: "Schließen",
+    score: "Punkte",
+    of: "von",
+    finalScore: "Endpunktzahl",
+    completed: "abgeschlossen",
+    tryAgain: "Erneut versuchen",
+    explanation: "Erklärung",
+    drag: "Ziehe die Begriffe in die richtigen Felder",
+    sort: "Bringe in die richtige Reihenfolge",
+    fillBlank: "Fülle die Lücken aus",
+    findError: "Finde den Fehler",
+    rollDice: "Würfeln!",
+    flipCoin: "Münze werfen!",
+    achievement: "🏆 Errungenschaft",
+    perfectLevel: "Perfektes Level!",
+    sunButton: "☀️",
+    sunPasswordPrompt: "Geheime Eingabe",
+    sunPasswordHint: "Nur für Eingeweihte",
+    invalidPassword: "Falsches Passwort!",
+    teacherUnlocked: "Lehrer-Modus aktiv",
+    next: "Weiter",
+    back: "Zurück",
+    yes: "Ja",
+    no: "Nein",
+    showMap: "Zur Welt-Karte"
+  },
+  en: {
+    appTitle: "Stochastics Quest",
+    subtitle: "The World of Randomness",
+    chooseLanguage: "Language",
+    welcome: "Welcome, Probability Hero!",
+    welcomeStory: "Chaos rages in the Kingdom of Mathematics! Dice roll uncontrollably, coins decide fates, and unsolved random variables threaten the land. Only you can restore the order of probability!",
+    enterName: "What is your name, hero?",
+    yourName: "Your name",
+    randomNick: "🎲 Random nickname",
+    chooseMode: "Choose your mode",
+    soloMode: "🎯 Solo",
+    teamMode: "👥 Team",
+    chooseAvatar: "Choose avatar",
+    chooseColor: "Choose color",
+    startQuest: "Start quest!",
+    home: "Map",
+    levelLocked: "🔒 Locked",
+    completeBefore: "Complete previous level!",
+    levelComplete: "Level completed!",
+    xpGained: "XP gained",
+    nextLevel: "Next level",
+    backToMap: "Back to map",
+    correct: "Correct!",
+    incorrect: "Not quite!",
+    hint: "Hint",
+    submit: "Check",
+    continue: "Continue",
+    yourAnswer: "Your answer",
+    selectAll: "Select all correct statements",
+    completeWorksheet: "Worksheet phase",
+    worksheetText: "Now work on a short task in your notebook. Write down key terms and solution paths!",
+    waitTime: "Please wait",
+    seconds: "seconds",
+    boss: "BOSS LEVEL",
+    bossIntro: "The Final Boss: Mock Exam!",
+    bossDescription: "Prove your skills in a timed exam. Make it in time!",
+    startBoss: "Challenge boss",
+    timeLeft: "Time",
+    certificate: "Certificate",
+    certTitle: "Certificate of Stochastics Mastery",
+    certDescription: "is hereby awarded to",
+    certFor: "for successfully mastering the World of Randomness",
+    downloadPDF: "📥 Download as PDF",
+    teacherMenu: "🔧 Teacher menu",
+    teacherPassword: "Password",
+    unlockAll: "Unlock all levels",
+    skipTask: "Skip task",
+    showSolution: "Show solution",
+    solution: "Solution",
+    close: "Close",
+    score: "Score",
+    of: "of",
+    finalScore: "Final score",
+    completed: "completed",
+    tryAgain: "Try again",
+    explanation: "Explanation",
+    drag: "Drag terms to correct fields",
+    sort: "Put in correct order",
+    fillBlank: "Fill in the blanks",
+    findError: "Find the error",
+    rollDice: "Roll!",
+    flipCoin: "Flip!",
+    achievement: "🏆 Achievement",
+    perfectLevel: "Perfect level!",
+    sunButton: "☀️",
+    sunPasswordPrompt: "Secret input",
+    sunPasswordHint: "For initiates only",
+    invalidPassword: "Wrong password!",
+    teacherUnlocked: "Teacher mode active",
+    next: "Next",
+    back: "Back",
+    yes: "Yes",
+    no: "No",
+    showMap: "Show world map"
+  }
+};
+
+/* =========================================================
+   AVATARS, COLORS, NICKNAMES
+   ========================================================= */
+const AVATARS = ["🧙", "🦊", "🐉", "🦉", "🐺", "🦁", "🐢", "🦄", "👾", "🤖", "🧝", "🦅"];
+const COLORS = [
+  { name: "gold", hex: "#ffd23f" },
+  { name: "pink", hex: "#ff3b8c" },
+  { name: "cyan", hex: "#1de9ff" },
+  { name: "green", hex: "#6affb6" },
+  { name: "purple", hex: "#a05bff" },
+  { name: "orange", hex: "#ff8c1a" }
+];
+const NICKS = ["WürfelWanda", "ZufallZorro", "BinomialBenny", "NormalNico", "PfadProfi", "VarianzVera", "KonfiKilian", "StochaSam", "ProbiPaul", "ChiChiara", "GaussGeo", "MarkovMia"];
+
+/* =========================================================
+   LEVEL DATA — Stochastik Q2 Abi-Vorbereitung
+   ========================================================= */
+const buildLevels = () => [
+  // ===== WELT VIII: DATEN UND WAHRSCHEINLICHKEIT =====
+  {
+    id: 1,
+    world: "VIII",
+    worldTitle: "Daten & Wahrscheinlichkeit",
+    title: "Wiederholung: Wahrscheinlichkeit",
+    icon: "🎲",
+    color: "#ffd23f",
+    cards: [
+      { type: "info", title: "🎲 Was ist Wahrscheinlichkeit?", text: "Eine **Wahrscheinlichkeit** P(A) ist eine Zahl zwischen **0 und 1**. Sie sagt aus, wie sicher ein Ereignis A eintritt. Dabei gilt P(unmöglich) = 0 und P(sicher) = 1." },
+      { type: "info", title: "📐 Laplace-Formel", text: "Bei einem **Laplace-Experiment** sind alle Ergebnisse gleich wahrscheinlich. Es gilt: **P(A) = günstige / mögliche Ergebnisse**. Beispiel: Beim Würfel ist P(6) = 1/6." },
+      {
+        type: "single", question: "Du würfelst einen fairen Würfel. Wie groß ist P(„Augenzahl ≥ 5\")?",
+        options: ["1/6", "2/6 = 1/3", "3/6 = 1/2", "4/6"],
+        correct: 1,
+        hint: "Welche Augenzahlen sind ≥ 5? Zähle sie!",
+        explanation: "Günstig sind die Augenzahlen 5 und 6 → 2 von 6 möglichen → 2/6 = 1/3."
+      },
+      {
+        type: "multi", question: "Welche Aussagen über Wahrscheinlichkeiten sind richtig?",
+        options: [
+          "Eine Wahrscheinlichkeit kann nie negativ sein.",
+          "P(Ω) = 1 für den ganzen Ergebnisraum.",
+          "Wahrscheinlichkeiten können auch 1,5 sein.",
+          "P(∅) = 0 für das unmögliche Ereignis."
+        ],
+        correct: [0, 1, 3],
+        hint: "Wahrscheinlichkeiten liegen IMMER zwischen 0 und 1.",
+        explanation: "Wahrscheinlichkeiten liegen stets zwischen 0 und 1, P(Ω)=1 und P(∅)=0 sind die Axiome."
+      },
+      {
+        type: "input", question: "Aus einem Kartenstapel mit 32 Karten ziehst du eine Karte. Wie groß ist P(„Pik\")? Gib als Bruch a/b ein.",
+        correct: ["8/32", "1/4", "0.25", "0,25"],
+        hint: "Es gibt 4 Farben mit jeweils 8 Karten.",
+        explanation: "8 Pik-Karten von 32 → 8/32 = 1/4 = 0,25"
+      }
+    ]
+  },
+  {
+    id: 2, world: "VIII", worldTitle: "Daten & Wahrscheinlichkeit",
+    title: "Verknüpfen von Ereignissen", icon: "🔗", color: "#ffd23f",
+    cards: [
+      { type: "info", title: "∪ und ∩", text: "**A ∪ B** = „A oder B (oder beide)\". **A ∩ B** = „A und B gleichzeitig\". Komplement A̅ = „nicht A\"." },
+      { type: "info", title: "🧮 Summenregel", text: "**P(A ∪ B) = P(A) + P(B) − P(A ∩ B)**. Dadurch wird die doppelt gezählte Schnittmenge wieder abgezogen." },
+      {
+        type: "single", question: "Es ist P(A) = 0,4, P(B) = 0,5 und P(A∩B) = 0,2. Wie groß ist P(A∪B)?",
+        options: ["0,9", "0,7", "0,3", "1,1"],
+        correct: 1,
+        hint: "Nutze die Summenregel: P(A) + P(B) − P(A∩B).",
+        explanation: "P(A∪B) = 0,4 + 0,5 − 0,2 = 0,7."
+      },
+      {
+        type: "match",
+        question: "Ordne die Mengen den Beschreibungen zu.",
+        pairs: [
+          { left: "A ∪ B", right: "A oder B (oder beide)" },
+          { left: "A ∩ B", right: "A und B gleichzeitig" },
+          { left: "A̅", right: "Nicht A" },
+          { left: "A \\ B", right: "A ohne B" }
+        ],
+        hint: "Denke an die Bedeutung der Mengensymbole."
+      },
+      {
+        type: "input",
+        question: "P(A̅) = 0,3. Wie groß ist P(A)? Gib eine Dezimalzahl ein.",
+        correct: ["0.7", "0,7", "7/10"],
+        hint: "P(A) + P(A̅) = 1.",
+        explanation: "Komplementärregel: P(A) = 1 − P(A̅) = 1 − 0,3 = 0,7."
+      }
+    ]
+  },
+  {
+    id: 3, world: "VIII", worldTitle: "Daten & Wahrscheinlichkeit",
+    title: "Bedingte Wahrscheinlichkeit & Unabhängigkeit", icon: "🧩", color: "#ffd23f",
+    cards: [
+      { type: "info", title: "🎯 Bedingte W.", text: "**P(B|A) = P(A∩B) / P(A)** ist die Wahrscheinlichkeit von B unter der Bedingung, dass A schon eingetreten ist." },
+      { type: "info", title: "🔓 Unabhängigkeit", text: "A und B sind **stochastisch unabhängig**, wenn **P(A∩B) = P(A) · P(B)**. Dann beeinflussen sich die Ereignisse nicht." },
+      { type: "worksheet", text: "Schreibe in dein Heft die Formel für bedingte Wahrscheinlichkeit auf und überlege: Wenn P(A)=0,5 und P(B|A)=0,3 ist – wie groß ist dann P(A∩B)?" },
+      {
+        type: "single",
+        question: "Es gilt P(A) = 0,5, P(B) = 0,4 und P(A∩B) = 0,2. Sind A und B unabhängig?",
+        options: ["Ja, denn P(A)·P(B) = 0,2 = P(A∩B)", "Nein, sie sind abhängig", "Das kann man nicht sagen", "Ja, weil P(A)+P(B)=0,9"],
+        correct: 0,
+        hint: "Prüfe: Ist P(A∩B) = P(A)·P(B)?",
+        explanation: "0,5 · 0,4 = 0,2 = P(A∩B), also sind A und B unabhängig."
+      },
+      {
+        type: "input",
+        question: "P(A) = 0,4, P(A∩B) = 0,1. Wie groß ist P(B|A)? (Dezimalzahl)",
+        correct: ["0.25", "0,25", "1/4"],
+        hint: "P(B|A) = P(A∩B) / P(A).",
+        explanation: "P(B|A) = 0,1 / 0,4 = 0,25."
+      }
+    ]
+  },
+  {
+    id: 4, world: "VIII", worldTitle: "Daten & Wahrscheinlichkeit",
+    title: "Daten erheben & Kenngrößen", icon: "📊", color: "#ffd23f",
+    cards: [
+      { type: "info", title: "📏 Kenngrößen", text: "Bei einer Zufallsgröße X mit Werten xᵢ und Wahrscheinlichkeiten pᵢ gilt: **Erwartungswert μ = Σ xᵢ · pᵢ**. Die **Varianz** ist V(X) = Σ (xᵢ−μ)²·pᵢ und σ = √V(X)." },
+      { type: "info", title: "🎯 Bedeutung", text: "Der Erwartungswert ist das **„mittlere Ergebnis\"** auf lange Sicht. Die Standardabweichung **σ** misst, wie weit die Werte typischerweise vom Mittelwert streuen." },
+      {
+        type: "single",
+        question: "Eine Zufallsgröße X hat Werte 0, 3, 6 mit Wahrscheinlichkeiten 1/2, 1/3, 1/6. Wie groß ist E(X)?",
+        options: ["1", "2", "3", "0,5"],
+        correct: 1,
+        hint: "E(X) = 0·1/2 + 3·1/3 + 6·1/6.",
+        explanation: "E(X) = 0 + 1 + 1 = 2."
+      },
+      {
+        type: "input",
+        question: "Ein faires Glücksspiel: Auszahlung 0€ mit P=0,5, 4€ mit P=0,5. Erwartungswert in Euro?",
+        correct: ["2", "2.0", "2,0", "2€"],
+        hint: "E(X) = 0·0,5 + 4·0,5.",
+        explanation: "E(X) = 0·0,5 + 4·0,5 = 2 €."
+      }
+    ]
+  },
+  {
+    id: 5, world: "VIII", worldTitle: "Daten & Wahrscheinlichkeit",
+    title: "Erwartungswert & Standardabweichung", icon: "📐", color: "#ffd23f",
+    cards: [
+      { type: "info", title: "💡 Faires Spiel", text: "Ein Spiel ist **fair**, wenn der Erwartungswert des Gewinns **(Auszahlung − Einsatz) gleich 0** ist. Sonst ist es zugunsten des Veranstalters oder Spielers verzerrt." },
+      {
+        type: "single",
+        question: "Bei einem Spiel zahlt man 3 € Einsatz. Mit P=1/3 gewinnt man 9 €, sonst nichts. Ist das Spiel fair?",
+        options: ["Ja, fair", "Nein, zugunsten des Spielers", "Nein, zugunsten des Veranstalters", "Kann man nicht sagen"],
+        correct: 0,
+        hint: "Gewinn = Auszahlung − Einsatz. Berechne E(Gewinn).",
+        explanation: "E = 1/3·(9−3) + 2/3·(0−3) = 6/3 − 6/3 = 0 € → fair!"
+      },
+      {
+        type: "input",
+        question: "X hat E(X)=3, V(X)=4. Wie groß ist die Standardabweichung σ?",
+        correct: ["2", "2.0"],
+        hint: "σ = √V.",
+        explanation: "σ = √4 = 2."
+      },
+      { type: "worksheet", text: "Notiere die Formel V(X) = Σ(xᵢ−μ)²pᵢ in deinem Heft und rechne ein eigenes Beispiel mit 3 Werten durch." }
+    ]
+  },
+
+  // ===== WELT IX: BINOMIALVERTEILUNG =====
+  {
+    id: 6, world: "IX", worldTitle: "Binomialverteilung",
+    title: "Bernoulli-Experimente", icon: "🪙", color: "#ff3b8c",
+    cards: [
+      { type: "info", title: "🪙 Bernoulli-Kette", text: "Ein **Bernoulli-Experiment** hat genau zwei Ausgänge: **Treffer (p)** oder **Niete (1−p)**. Wird es n-mal **unabhängig** wiederholt, spricht man von einer **Bernoulli-Kette der Länge n**." },
+      { type: "info", title: "🎯 Binomialverteilung", text: "Die Anzahl X der Treffer in einer Bernoulli-Kette ist **binomialverteilt**: **B(n; p; k) = C(n,k)·pᵏ·(1−p)ⁿ⁻ᵏ**." },
+      {
+        type: "multi",
+        question: "Welche Situationen sind (näherungsweise) Bernoulli-Ketten?",
+        options: [
+          "10× Münze werfen, jedes Mal P(Kopf) = 0,5",
+          "Aus einer Urne ohne Zurücklegen 5 Kugeln ziehen",
+          "Bei einer Klassenarbeit jede Aufgabe richtig oder falsch",
+          "100× würfeln und Augensumme bilden"
+        ],
+        correct: [0, 2],
+        hint: "Bernoulli braucht: 2 Ausgänge + gleiche Trefferwahrscheinlichkeit + Unabhängigkeit.",
+        explanation: "Münzwurf und Aufgaben (Treffer/Niete) sind Bernoulli. Ohne Zurücklegen ändert sich p, und die Augensumme hat mehr als 2 Ausgänge."
+      },
+      {
+        type: "single",
+        question: "Eine Bernoulli-Kette der Länge n=20 mit p=0,3. Wie viele Treffer erwartet man im Mittel?",
+        options: ["3", "6", "10", "14"],
+        correct: 1,
+        hint: "Erwartungswert: μ = n·p.",
+        explanation: "μ = 20 · 0,3 = 6."
+      }
+    ]
+  },
+  {
+    id: 7, world: "IX", worldTitle: "Binomialverteilung",
+    title: "Binomialkoeffizienten", icon: "🔢", color: "#ff3b8c",
+    cards: [
+      { type: "info", title: "🔢 C(n,k)", text: "Der **Binomialkoeffizient** **C(n,k) = n! / (k!·(n−k)!)** zählt, auf wie viele Arten man k Objekte aus n auswählen kann (Reihenfolge egal)." },
+      { type: "info", title: "🔺 Pascalsches Dreieck", text: "Im **Pascalschen Dreieck** stehen die Binomialkoeffizienten. Jede Zahl ist die Summe der beiden darüber. Symmetrie: **C(n,k) = C(n,n−k)**." },
+      {
+        type: "single",
+        question: "Wie groß ist C(5,2)?",
+        options: ["10", "20", "15", "5"],
+        correct: 0,
+        hint: "C(5,2) = 5! / (2!·3!) = (5·4)/(2·1).",
+        explanation: "C(5,2) = 10."
+      },
+      {
+        type: "match",
+        question: "Ordne die Werte zu.",
+        pairs: [
+          { left: "C(4,0)", right: "1" },
+          { left: "C(4,1)", right: "4" },
+          { left: "C(4,2)", right: "6" },
+          { left: "C(4,4)", right: "1" }
+        ],
+        hint: "Pascalsches Dreieck Zeile n=4: 1 4 6 4 1."
+      }
+    ]
+  },
+  {
+    id: 8, world: "IX", worldTitle: "Binomialverteilung",
+    title: "Erwartungswert & Histogramm", icon: "📈", color: "#ff3b8c",
+    cards: [
+      { type: "info", title: "📐 Kennzahlen B(n,p)", text: "Für X ~ B(n,p) gilt: **μ = n·p** und **σ = √(n·p·(1−p))**." },
+      { type: "info", title: "📊 Histogramm", text: "Das Histogramm einer Binomialverteilung ist **symmetrisch** für p=0,5, **rechtsschief** für kleines p und **linksschief** für großes p." },
+      {
+        type: "single",
+        question: "Du siehst ein Histogramm mit Maximum bei k=2 und n=10. Welches p passt am besten?",
+        options: ["p ≈ 0,2", "p ≈ 0,5", "p ≈ 0,8", "p ≈ 1,0"],
+        correct: 0,
+        hint: "Maximum liegt nahe bei n·p.",
+        explanation: "n·p ≈ 2 → p ≈ 2/10 = 0,2."
+      },
+      {
+        type: "input",
+        question: "X ~ B(50; 0,4). Wie groß ist μ?",
+        correct: ["20"],
+        hint: "μ = n·p.",
+        explanation: "μ = 50 · 0,4 = 20."
+      },
+      {
+        type: "input",
+        question: "X ~ B(100; 0,5). Wie groß ist σ? (eine Nachkommastelle)",
+        correct: ["5", "5,0", "5.0"],
+        hint: "σ = √(n·p·(1−p)) = √(100·0,5·0,5).",
+        explanation: "σ = √25 = 5."
+      }
+    ]
+  },
+  {
+    id: 9, world: "IX", worldTitle: "Binomialverteilung",
+    title: "Kumulierte Wahrscheinlichkeiten", icon: "📚", color: "#ff3b8c",
+    cards: [
+      { type: "info", title: "Σ Kumulierte W.", text: "**P(X ≤ k)** ist die Summe aller Binomialwahrscheinlichkeiten von 0 bis k. In Tabellen oder im Taschenrechner als **F(n;p;k)** abrufbar." },
+      { type: "info", title: "🔁 Umformung", text: "Wichtig: **P(X ≥ k) = 1 − P(X ≤ k−1)** und **P(a ≤ X ≤ b) = P(X≤b) − P(X≤a−1)**." },
+      {
+        type: "single",
+        question: "X ~ B(10; 0,5). Es ist P(X ≤ 3) ≈ 0,172. Wie groß ist näherungsweise P(X ≥ 4)?",
+        options: ["0,172", "0,828", "0,5", "0,328"],
+        correct: 1,
+        hint: "P(X ≥ 4) = 1 − P(X ≤ 3).",
+        explanation: "P(X ≥ 4) = 1 − 0,172 = 0,828."
+      },
+      {
+        type: "sort",
+        question: "Sortiere von kleinster zu größter Wahrscheinlichkeit für X~B(10; 0,5):",
+        items: ["P(X = 0)", "P(X = 5)", "P(X ≤ 3)", "P(X ≤ 10)"],
+        correct: ["P(X = 0)", "P(X ≤ 3)", "P(X = 5)", "P(X ≤ 10)"],
+        hint: "P(X≤10)=1, P(X=5) ist Maximum bei p=0,5, P(X=0) ist sehr klein."
+      }
+    ]
+  },
+  {
+    id: 10, world: "IX", worldTitle: "Binomialverteilung",
+    title: "Standardabweichung & Sigma-Regeln", icon: "📏", color: "#ff3b8c",
+    cards: [
+      { type: "info", title: "📐 σ-Regeln", text: "Für hinreichend große n (Laplace-Bedingung σ > 3) gilt näherungsweise:\n**P(μ−σ ≤ X ≤ μ+σ) ≈ 68 %**\n**P(μ−2σ ≤ X ≤ μ+2σ) ≈ 95 %**\n**P(μ−3σ ≤ X ≤ μ+3σ) ≈ 99,7 %**" },
+      {
+        type: "single",
+        question: "X ~ B(400; 0,5). Im Intervall [μ−2σ; μ+2σ] liegen näherungsweise…",
+        options: ["68 %", "95 %", "99,7 %", "50 %"],
+        correct: 1,
+        hint: "2σ-Umgebung → 2σ-Regel.",
+        explanation: "Die 2σ-Umgebung enthält ca. 95 % der Werte (95,4 %)."
+      },
+      {
+        type: "fillblank",
+        question: "Vervollständige die σ-Regel:",
+        template: "P(μ − σ ≤ X ≤ μ + σ) ≈ ___ %",
+        correct: ["68"],
+        hint: "1σ-Umgebung.",
+        explanation: "1σ-Umgebung: ca. 68 %."
+      }
+    ]
+  },
+  {
+    id: 11, world: "IX", worldTitle: "Binomialverteilung",
+    title: "Probleme lösen mit der Binomialverteilung", icon: "🧠", color: "#ff3b8c",
+    cards: [
+      { type: "worksheet", text: "Aufgabe: Bei einem Test mit 20 Multiple-Choice-Fragen (4 Antworten, 1 richtig) wird zufällig geraten. Berechne in deinem Heft P(X ≥ 10) – wie viele Treffer braucht man, um zu bestehen?" },
+      {
+        type: "single",
+        question: "5 % Hauptgewinne bei 20.000 Losen. Du kaufst 10 Lose. Welche Verteilung passt näherungsweise?",
+        options: ["B(20000; 0,1)", "B(10; 0,05)", "B(10; 0,5)", "B(20000; 0,5)"],
+        correct: 1,
+        hint: "n = Anzahl gekaufter Lose, p = Trefferwahrscheinlichkeit.",
+        explanation: "n=10 (Lose) und p=0,05 (Hauptgewinn). Das Ziehen ohne Zurücklegen wird hier näherungsweise als unabhängig angesehen."
+      },
+      {
+        type: "input",
+        question: "Wie viele Lose musst du mindestens kaufen, damit P(mindestens 1 Hauptgewinn) ≥ 0,95 ist? (p=0,05; gerundet auf ganze Zahl)",
+        correct: ["59", "58", "60"],
+        hint: "Bedingung: 1 − 0,95ⁿ ≥ 0,95 → 0,95ⁿ ≤ 0,05.",
+        explanation: "0,95ⁿ ≤ 0,05 → n ≥ log(0,05)/log(0,95) ≈ 58,4 → n = 59 Lose."
+      }
+    ]
+  },
+
+  // ===== WELT X: PROGNOSE & KONFIDENZINTERVALLE =====
+  {
+    id: 12, world: "X", worldTitle: "Prognose & Konfidenz",
+    title: "Prognoseintervalle (absolut)", icon: "🎯", color: "#1de9ff",
+    cards: [
+      { type: "info", title: "🎯 Prognose-Intervall", text: "Ein **Prognoseintervall** zur Sicherheit β gibt an, in welchem Bereich die Trefferzahl X mit einer Wahrscheinlichkeit ≥ β liegen wird. Ausgangspunkt: bekannte Trefferw. **p**." },
+      { type: "info", title: "📐 2σ-Prognose", text: "Bei der 2σ-Regel: **[μ−2σ; μ+2σ]** mit μ=n·p und σ=√(np(1−p)). Sicherheit ≈ 95 %." },
+      {
+        type: "single",
+        question: "n=100, p=0,5. Wie lautet das 2σ-Prognoseintervall (gerundet)?",
+        options: ["[40; 60]", "[45; 55]", "[30; 70]", "[35; 65]"],
+        correct: 0,
+        hint: "μ=50, σ=5 → [50−10; 50+10].",
+        explanation: "μ=50, σ=5, also [50−10; 50+10] = [40; 60]."
+      }
+    ]
+  },
+  {
+    id: 13, world: "X", worldTitle: "Prognose & Konfidenz",
+    title: "Prognoseintervalle (relativ)", icon: "📊", color: "#1de9ff",
+    cards: [
+      { type: "info", title: "📊 Relative Häufigkeit", text: "Für h = X/n gilt: **E(h) = p** und **σ(h) = √(p(1−p)/n)**. Mit der 2σ-Regel: **p ± 2·√(p(1−p)/n)**." },
+      {
+        type: "single",
+        question: "n=400, p=0,5. Welche Breite hat das relative 2σ-Prognoseintervall (gesamt)?",
+        options: ["0,05", "0,10", "0,025", "0,2"],
+        correct: 1,
+        hint: "σ(h) = √(0,5·0,5/400) = 0,025. Breite = 4σ = 0,1.",
+        explanation: "σ(h) = 0,025, also Intervallbreite = 4·0,025 = 0,1."
+      },
+      { type: "worksheet", text: "Notiere die Formel σ(h) = √(p(1−p)/n) und überlege: Wie ändert sich σ(h), wenn n vervierfacht wird?" }
+    ]
+  },
+  {
+    id: 14, world: "X", worldTitle: "Prognose & Konfidenz",
+    title: "Konfidenzintervalle", icon: "🔮", color: "#1de9ff",
+    cards: [
+      { type: "info", title: "🔮 Konfidenzintervall", text: "Bei einem **Konfidenzintervall** ist die wahre Trefferw. **p unbekannt**. Aus einer Stichprobe (relative Häufigkeit h) wird ein Bereich konstruiert, der p mit Sicherheit β „einfängt\"." },
+      { type: "info", title: "📐 Näherungsformel", text: "Näherung (β=95 %): **p ∈ [h − 1,96·√(h(1−h)/n) ; h + 1,96·√(h(1−h)/n)]**. Bei β=95,4 % nimmt man Faktor 2." },
+      {
+        type: "single",
+        question: "Bürgermeister-Umfrage: n=100, h=0,5. 2σ-Konfidenzintervall (β≈95,4%) ist näherungsweise…",
+        options: ["[0,40; 0,60]", "[0,45; 0,55]", "[0,30; 0,70]", "[0,48; 0,52]"],
+        correct: 0,
+        hint: "σ ≈ √(0,5·0,5/100) = 0,05; Faktor 2.",
+        explanation: "σ(h) = 0,05; 2σ-Intervall: 0,5 ± 0,1 = [0,40; 0,60]. Der Bürgermeister muss zweifeln, da 0,5 möglich ist."
+      }
+    ]
+  },
+  {
+    id: 15, world: "X", worldTitle: "Prognose & Konfidenz",
+    title: "Stichprobenumfang schätzen", icon: "🔍", color: "#1de9ff",
+    cards: [
+      { type: "info", title: "🔍 n bestimmen", text: "Soll das 2σ-Konfidenzintervall die Breite ≤ d haben, gilt grob:\n**n ≥ 4/d²** (worst-case bei p=0,5). Für höhere Genauigkeit größer wählen." },
+      {
+        type: "single",
+        question: "Maximale Halbbreite ±2 % (=0,02). Welcher Stichprobenumfang ist nötig (Faustformel)?",
+        options: ["n ≥ 100", "n ≥ 625", "n ≥ 2500", "n ≥ 10000"],
+        correct: 2,
+        hint: "Halbbreite = 2σ ≈ 0,02 → σ ≈ 0,01 → 0,5·0,5/n = 0,0001 → n=2500.",
+        explanation: "Aus σ(h) = 0,01 folgt n = 0,25/0,0001 = 2500."
+      }
+    ]
+  },
+  {
+    id: 16, world: "X", worldTitle: "Prognose & Konfidenz",
+    title: "Normalverteilung", icon: "🔔", color: "#1de9ff",
+    cards: [
+      { type: "info", title: "🔔 Normalverteilung", text: "Die **Normalverteilung N(μ, σ²)** ist symmetrisch und glockenförmig. Sie nähert die Binomialverteilung an, wenn σ > 3 (Laplace-Bedingung)." },
+      { type: "info", title: "📈 Standardisierung", text: "Mit **Z = (X−μ)/σ** wird in die **Standardnormalverteilung N(0,1)** transformiert. Wahrscheinlichkeiten via **Φ**-Tabelle." },
+      {
+        type: "single",
+        question: "X ~ N(200; 16). P(X ≤ 196) ≈ ?",
+        options: ["0,5", "0,1587", "0,8413", "0,975"],
+        correct: 1,
+        hint: "Z = (196−200)/4 = −1; Φ(−1) ≈ 0,1587.",
+        explanation: "Standardisieren: Z=−1 → Φ(−1)=1−Φ(1)≈1−0,8413=0,1587."
+      },
+      {
+        type: "input",
+        question: "X ~ N(500; 100). Welcher Z-Wert gehört zu X=480? (eine Nachkommastelle)",
+        correct: ["-2", "-2,0", "-2.0"],
+        hint: "Z = (480−500)/10.",
+        explanation: "Z = (480−500)/10 = −2."
+      }
+    ]
+  },
+
+  // ===== PRÜFUNGSVORBEREITUNG / PROBE-ABI =====
+  {
+    id: 17, world: "★", worldTitle: "Prüfungsvorbereitung",
+    title: "Mischaufgaben Klausurtraining", icon: "📝", color: "#a05bff",
+    cards: [
+      { type: "info", title: "🎓 Klausur-Strategie", text: "**1.** Schlüsselwörter unterstreichen. **2.** Verteilung erkennen (B(n,p) oder N(μ,σ))? **3.** Formel nutzen, GTR/CAS für Berechnungen einsetzen. **4.** Antwortsatz mit Kontext schreiben." },
+      {
+        type: "single",
+        question: "Walnuss-Füllgewicht: μ=200g, σ=4. Welcher Term gibt P(196 ≤ X ≤ 204)?",
+        options: ["∫₁₉₆²⁰⁴ φ_(200,4)(x) dx", "P(X=200)", "Φ(0)−Φ(0)", "1 − 2·Φ(204)"],
+        correct: 0,
+        hint: "Wahrscheinlichkeiten bei N als Integral der Dichtefunktion.",
+        explanation: "P(196 ≤ X ≤ 204) = ∫ φ(x) dx von 196 bis 204."
+      },
+      {
+        type: "multi",
+        question: "Beim Test (12 % erkrankt, Sensitivität 90 %): Was ergibt eine Vierfeldertafel?",
+        options: [
+          "P(krank ∩ positiv) = 0,12·0,9 = 0,108",
+          "P(positiv) = 0,1256",
+          "P(positiv) = 0,9",
+          "P(krank | positiv) = P(krank ∩ positiv)/P(positiv)"
+        ],
+        correct: [0, 1, 3],
+        hint: "Vierfeldertafel: P(K∩P), P(K∩N), P(¬K∩P), P(¬K∩N) ergänzen.",
+        explanation: "P(K∩P)=0,108. P(P)=0,1256 ist gegeben. Bayes-Formel ist korrekt. P(P)=0,9 ist falsch (das wäre die Sensitivität)."
+      },
+      {
+        type: "input",
+        question: "Konfidenzintervall: n=200, h=0,8. 2σ-Halbbreite ≈ ? (eine Nachkommastelle)",
+        correct: ["0.06", "0,06", "0,1", "0.1"],
+        hint: "2·√(0,8·0,2/200) = 2·√0,0008 ≈ 0,057.",
+        explanation: "σ(h) = √(0,16/200) ≈ 0,028; 2σ ≈ 0,057 → ca. 0,06."
+      }
+    ]
+  },
+
+  // BOSS LEVEL
+  {
+    id: 18, world: "★", worldTitle: "Probe-Abitur", boss: true,
+    title: "BOSS: Das Probe-Abitur", icon: "👑", color: "#ffd23f",
+    timeLimit: 240,
+    cards: [
+      {
+        type: "single", question: "Eine Bernoulli-Kette: n=50, p=0,2. Wie groß ist μ?",
+        options: ["10", "5", "20", "0,2"], correct: 0,
+        explanation: "μ = n·p = 50·0,2 = 10."
+      },
+      {
+        type: "single", question: "X ~ B(20; 0,5). P(X = 10) ist...",
+        options: ["maximal (Modus)", "kleiner als P(X=0)", "exakt 0,5", "1"],
+        correct: 0, explanation: "Bei p=0,5 liegt das Maximum genau in der Mitte (k=n/2=10)."
+      },
+      {
+        type: "single", question: "P(A) = 0,6, P(B|A) = 0,5. P(A∩B) = ?",
+        options: ["0,1", "0,3", "0,5", "1,1"], correct: 1,
+        explanation: "P(A∩B) = P(A)·P(B|A) = 0,6·0,5 = 0,3."
+      },
+      {
+        type: "single", question: "2σ-Konfidenzintervall: n=400, h=0,25. Halbbreite (Faktor 2) ≈ ?",
+        options: ["0,01", "0,043", "0,1", "0,25"], correct: 1,
+        explanation: "2·√(0,25·0,75/400) = 2·√0,000469 ≈ 0,043."
+      },
+      {
+        type: "single", question: "X ~ N(0; 1). P(−1 ≤ Z ≤ 1) ≈ ?",
+        options: ["68 %", "95 %", "99,7 %", "50 %"],
+        correct: 0, explanation: "1σ-Umgebung in der Standardnormalverteilung: ca. 68 %."
+      },
+      {
+        type: "single", question: "Wann ist die Laplace-Bedingung erfüllt?",
+        options: ["σ > 3", "n > 100", "p = 0,5", "n·p = 1"], correct: 0,
+        explanation: "Faustregel: σ = √(np(1−p)) > 3 → Normalverteilung als Näherung brauchbar."
+      },
+      {
+        type: "single", question: "C(8,3) = ?",
+        options: ["56", "24", "336", "112"], correct: 0,
+        explanation: "C(8,3) = 8!/(3!·5!) = (8·7·6)/(3·2·1) = 56."
+      },
+      {
+        type: "single", question: "Faires Spiel: Einsatz 2 €, Auszahlung 10 € mit P=1/5, sonst 0. Erwartungswert des Gewinns?",
+        options: ["+2 €", "0 €", "−2 €", "+10 €"],
+        correct: 1, explanation: "E(Gewinn) = 1/5·(10−2) + 4/5·(0−2) = 8/5 − 8/5 = 0 € → fair."
+      }
+    ]
+  }
+];
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const formatText = (text) => {
+  if (!text) return null;
+  // Replace **bold** with span
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((p, i) => {
+    if (p.startsWith("**") && p.endsWith("**")) {
+      return <span key={i} className="keyword">{p.slice(2, -2)}</span>;
+    }
+    return <span key={i}>{p}</span>;
+  });
+};
+
+const Confetti = () => {
+  const pieces = useMemo(() => Array.from({ length: 40 }, (_, i) => ({
+    id: i, left: Math.random() * 100,
+    color: ["#ffd23f", "#ff3b8c", "#1de9ff", "#6affb6", "#a05bff"][i % 5],
+    delay: Math.random() * 0.5,
+    size: 6 + Math.random() * 10
+  })), []);
+  return (
+    <>
+      {pieces.map(p => (
+        <div key={p.id} className="confetti" style={{
+          left: `${p.left}%`, top: 0,
+          background: p.color, width: p.size, height: p.size,
+          animationDelay: `${p.delay}s`,
+          borderRadius: Math.random() > 0.5 ? "50%" : "0"
+        }} />
+      ))}
+    </>
+  );
+};
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
+function App() {
+  const [lang, setLang] = useState("de");
+  const t = useCallback((k) => translations[lang][k] || k, [lang]);
+
+  const [view, setView] = useState("welcome"); // welcome, map, level, certificate
+  const [profile, setProfile] = useState({ name: "", avatar: AVATARS[0], color: COLORS[0].hex, mode: "solo" });
+  const [xp, setXp] = useState(0);
+  const [unlocked, setUnlocked] = useState([1]);
+  const [completed, setCompleted] = useState([]);
+  const [currentLevel, setCurrentLevel] = useState(null);
+  const [stats, setStats] = useState({ correct: 0, wrong: 0, history: [] }); // history: {levelId, levelTitle, correctCount, totalCount, wrongQuestions:[]}
+  const [showTeacher, setShowTeacher] = useState(false);
+  const [showSunPwd, setShowSunPwd] = useState(false);
+  const [teacherActive, setTeacherActive] = useState(false);
+
+  const levels = useMemo(() => buildLevels(), []);
+
+  // Restore from sessionStorage if present (in-memory only since artifacts disallow localStorage)
+  // We avoid storage APIs altogether per artifact rules.
+
+  const unlockLevel = (id) => {
+    setUnlocked(prev => prev.includes(id) ? prev : [...prev, id]);
+  };
+
+  const handleLevelComplete = (levelId, correctCount, totalCount, wrongQuestions) => {
+    const gained = correctCount * 50;
+    setXp(prev => prev + gained);
+    if (!completed.includes(levelId)) {
+      setCompleted(prev => [...prev, levelId]);
+    }
+    const next = levels.find(l => l.id === levelId + 1);
+    if (next) unlockLevel(next.id);
+    const lvl = levels.find(l => l.id === levelId);
+    setStats(prev => ({
+      correct: prev.correct + correctCount,
+      wrong: prev.wrong + (totalCount - correctCount),
+      history: [...prev.history.filter(h => h.levelId !== levelId), {
+        levelId, levelTitle: lvl ? lvl.title : "", correctCount, totalCount, wrongQuestions
+      }]
+    }));
+  };
+
+  const allLevelsDone = completed.length === levels.length;
+
+  /* ====== UNLOCK ALL via sun-button password ====== */
+  const handleSunPassword = (pw) => {
+    if (pw.toLowerCase() === "zufall") {
+      setUnlocked(levels.map(l => l.id));
+      setShowSunPwd(false);
+      setTeacherActive(true);
+      alert("✨ Alle Welten und Level wurden freigeschaltet! ✨");
+    } else {
+      alert(t("invalidPassword"));
+    }
+  };
+  const handleTeacherPassword = (pw) => {
+    if (pw === "lehrer2026" || pw.toLowerCase() === "zufall") {
+      setTeacherActive(true);
+      setUnlocked(levels.map(l => l.id));
+      setShowTeacher(false);
+      alert("👨‍🏫 " + t("teacherUnlocked"));
+    } else {
+      alert(t("invalidPassword"));
+    }
+  };
+
+  /* ====== HEADER ====== */
+  const Header = () => (
+    <header className="sticky top-0 z-30 bg-gradient-to-r from-[#1a2148] via-[#0b1023] to-[#1a2148] border-b-4 border-[#ffd23f] shadow-lg">
+      <div className="max-w-5xl mx-auto px-3 py-2 flex items-center justify-between gap-2">
+        <button
+          onClick={() => view !== "welcome" && setView("map")}
+          className="flex items-center gap-2 group"
+        >
+          <span className="text-2xl wobble">🎲</span>
+          <span className="pixel text-[10px] sm:text-xs text-[#ffd23f] hidden sm:block">STOCHASTIK QUEST</span>
+        </button>
+        {view !== "welcome" && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-3 py-1 bg-[#ffd23f]/20 rounded-full border border-[#ffd23f]">
+              <span className="text-base">⭐</span>
+              <span className="pixel text-[10px] text-[#ffd23f]">{xp} XP</span>
+            </div>
+            <span className="text-xl" style={{color: profile.color}}>{profile.avatar}</span>
+            <span className="text-sm text-white font-semibold hidden md:block">{profile.name}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1">
+          <select
+            value={lang} onChange={(e)=>setLang(e.target.value)}
+            className="bg-[#0b1023] text-[#ffd23f] text-xs border border-[#ffd23f] rounded px-1 py-1"
+            aria-label={t("chooseLanguage")}
+          >
+            <option value="de">🇩🇪 DE</option>
+            <option value="en">🇬🇧 EN</option>
+          </select>
+          <button
+            onClick={() => setShowSunPwd(true)}
+            className="text-xl hover:scale-110 transition" title={t("sunButton")}
+          >☀️</button>
+          <button
+            onClick={() => setShowTeacher(true)}
+            className="text-base px-2 py-1 bg-[#1a2148] border border-[#ffd23f]/50 rounded text-[#ffd23f] hover:bg-[#ffd23f]/10"
+            title={t("teacherMenu")}
+          >🔧</button>
+        </div>
+      </div>
+    </header>
+  );
+
+  /* ====== SUN PASSWORD MODAL ====== */
+  const SunPasswordModal = () => {
+    const [pw, setPw] = useState("");
+    if (!showSunPwd) return null;
+    return (
+      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="card-glass rounded-2xl p-6 max-w-sm w-full pop-in border-4 border-[#ffd23f]">
+          <div className="text-center text-5xl mb-2 float">☀️</div>
+          <h2 className="pixel text-sm text-[#ffd23f] text-center mb-2">{t("sunPasswordPrompt")}</h2>
+          <p className="text-white/70 text-xs text-center mb-4">{t("sunPasswordHint")}</p>
+          <input
+            type="password" value={pw} onChange={(e)=>setPw(e.target.value)}
+            onKeyDown={(e)=>e.key==="Enter"&&handleSunPassword(pw)}
+            className="w-full px-3 py-2 bg-[#0b1023] border-2 border-[#ffd23f] rounded text-white"
+            autoFocus
+          />
+          <div className="flex gap-2 mt-4">
+            <button onClick={()=>setShowSunPwd(false)} className="flex-1 btn-3d bg-[#1a2148] text-white py-2 rounded font-bold">{t("close")}</button>
+            <button onClick={()=>handleSunPassword(pw)} className="flex-1 btn-3d bg-[#ffd23f] text-[#0b1023] py-2 rounded font-bold">OK</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ====== TEACHER MENU ====== */
+  const TeacherModal = () => {
+    const [pw, setPw] = useState("");
+    if (!showTeacher) return null;
+    return (
+      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="card-glass rounded-2xl p-6 max-w-md w-full pop-in border-4 border-[#a05bff]">
+          <h2 className="pixel text-sm text-[#a05bff] text-center mb-4">🔧 {t("teacherMenu")}</h2>
+          {!teacherActive ? (
+            <>
+              <p className="text-white/70 text-sm mb-3">{t("teacherPassword")}:</p>
+              <input
+                type="password" value={pw} onChange={(e)=>setPw(e.target.value)}
+                onKeyDown={(e)=>e.key==="Enter"&&handleTeacherPassword(pw)}
+                className="w-full px-3 py-2 bg-[#0b1023] border-2 border-[#a05bff] rounded text-white mb-4"
+                autoFocus placeholder="lehrer2026"
+              />
+              <div className="flex gap-2">
+                <button onClick={()=>setShowTeacher(false)} className="flex-1 btn-3d bg-[#1a2148] text-white py-2 rounded font-bold">{t("close")}</button>
+                <button onClick={()=>handleTeacherPassword(pw)} className="flex-1 btn-3d bg-[#a05bff] text-white py-2 rounded font-bold">OK</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-[#6affb6] text-sm mb-3">✓ {t("teacherUnlocked")}</p>
+              <button
+                onClick={()=>{setUnlocked(levels.map(l=>l.id)); setShowTeacher(false);}}
+                className="w-full btn-3d bg-[#a05bff] text-white py-3 rounded font-bold mb-2"
+              >{t("unlockAll")}</button>
+              <button
+                onClick={()=>setShowTeacher(false)}
+                className="w-full btn-3d bg-[#1a2148] text-white py-2 rounded font-bold"
+              >{t("close")}</button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ====== WELCOME / SETUP ====== */
+  const WelcomeView = () => {
+    const [name, setName] = useState("");
+    const [step, setStep] = useState(0);
+    const [mode, setMode] = useState("solo");
+    const [avatar, setAvatar] = useState(AVATARS[0]);
+    const [color, setColor] = useState(COLORS[0].hex);
+
+    const randomNick = () => setName(NICKS[Math.floor(Math.random() * NICKS.length)]);
+    const startQuest = () => {
+      if (!name.trim()) return;
+      setProfile({ name: name.trim(), avatar, color, mode });
+      setView("map");
+    };
+
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
+        <div className="max-w-2xl w-full card-glass rounded-3xl p-6 sm:p-8 pop-in">
+          {step === 0 && (
+            <>
+              <div className="text-center mb-6">
+                <div className="text-7xl float mb-2">🎲</div>
+                <h1 className="pixel text-lg sm:text-2xl text-[#ffd23f] mb-2">{t("appTitle")}</h1>
+                <p className="retro text-xl text-[#1de9ff]">{t("subtitle")}</p>
+              </div>
+              <h2 className="text-white text-xl font-bold mb-3">{t("welcome")}</h2>
+              <p className="text-white/80 mb-6 leading-relaxed">{t("welcomeStory")}</p>
+              <button onClick={()=>setStep(1)} className="w-full btn-3d glow bg-[#ffd23f] text-[#0b1023] py-4 rounded-xl pixel text-xs">
+                ▶ {t("next")}
+              </button>
+            </>
+          )}
+          {step === 1 && (
+            <>
+              <h2 className="pixel text-sm text-[#ffd23f] mb-4">{t("enterName")}</h2>
+              <input
+                type="text" value={name} onChange={(e)=>setName(e.target.value)}
+                placeholder={t("yourName")}
+                className="w-full px-4 py-3 bg-[#0b1023] border-2 border-[#ffd23f] rounded-xl text-white text-lg mb-3"
+              />
+              <button onClick={randomNick} className="w-full btn-3d bg-[#1de9ff] text-[#0b1023] py-2 rounded-xl font-bold mb-4">
+                {t("randomNick")}
+              </button>
+              <h3 className="text-white font-bold mb-2">{t("chooseMode")}:</h3>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {[{v:"solo", k:"soloMode"}, {v:"team", k:"teamMode"}].map(m => (
+                  <button key={m.v} onClick={()=>setMode(m.v)}
+                    className={`btn-3d py-3 rounded-xl font-bold ${mode===m.v ? "bg-[#ffd23f] text-[#0b1023]" : "bg-[#1a2148] text-white border border-[#ffd23f]/30"}`}>
+                    {t(m.k)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={()=>setStep(0)} className="btn-3d bg-[#1a2148] text-white py-3 px-4 rounded-xl">←</button>
+                <button onClick={()=>name.trim() && setStep(2)} disabled={!name.trim()}
+                  className="flex-1 btn-3d bg-[#ffd23f] text-[#0b1023] py-3 rounded-xl pixel text-xs disabled:opacity-40">
+                  {t("next")} ▶
+                </button>
+              </div>
+            </>
+          )}
+          {step === 2 && (
+            <>
+              <h2 className="pixel text-sm text-[#ffd23f] mb-4">{t("chooseAvatar")}</h2>
+              <div className="grid grid-cols-6 gap-2 mb-4">
+                {AVATARS.map(a => (
+                  <button key={a} onClick={()=>setAvatar(a)}
+                    className={`text-3xl p-2 rounded-xl btn-3d ${avatar===a ? "bg-[#ffd23f] scale-110" : "bg-[#1a2148] border border-[#ffd23f]/30"}`}>
+                    {a}
+                  </button>
+                ))}
+              </div>
+              <h3 className="pixel text-xs text-[#ffd23f] mb-3">{t("chooseColor")}</h3>
+              <div className="flex flex-wrap gap-2 mb-6 justify-center">
+                {COLORS.map(c => (
+                  <button key={c.name} onClick={()=>setColor(c.hex)}
+                    className={`w-10 h-10 rounded-full btn-3d ${color===c.hex ? "ring-4 ring-white scale-110" : ""}`}
+                    style={{background: c.hex}} />
+                ))}
+              </div>
+              <div className="text-center mb-4 p-4 bg-[#0b1023]/50 rounded-xl">
+                <span className="text-5xl block mb-1" style={{color}}>{avatar}</span>
+                <span className="text-white font-bold">{name}</span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={()=>setStep(1)} className="btn-3d bg-[#1a2148] text-white py-3 px-4 rounded-xl">←</button>
+                <button onClick={startQuest}
+                  className="flex-1 btn-3d glow bg-gradient-to-r from-[#ffd23f] to-[#ff3b8c] text-[#0b1023] py-3 rounded-xl pixel text-xs">
+                  {t("startQuest")} ⚔️
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ====== MAP / LEVEL OVERVIEW ====== */
+  const MapView = () => {
+    const worldsMap = {};
+    levels.forEach(l => {
+      if (!worldsMap[l.world]) worldsMap[l.world] = { title: l.worldTitle, levels: [] };
+      worldsMap[l.world].levels.push(l);
+    });
+    const worldKeys = Object.keys(worldsMap);
+
+    return (
+      <div className="min-h-screen p-3 sm:p-6 max-w-5xl mx-auto pb-24">
+        <div className="text-center mb-4 pop-in">
+          <div className="text-5xl float">🗺️</div>
+          <h1 className="pixel text-base sm:text-xl text-[#ffd23f]">{t("appTitle")}</h1>
+          <p className="text-white/70 text-sm">Welt {completed.length}/{levels.length} {t("completed")}</p>
+        </div>
+
+        {worldKeys.map((wk, wi) => {
+          const world = worldsMap[wk];
+          return (
+            <div key={wk} className="mb-8 slide-up">
+              <div className="card-glass rounded-2xl p-3 mb-3 border-l-8" style={{borderColor: world.levels[0].color}}>
+                <h2 className="pixel text-xs sm:text-sm text-white">
+                  Welt {wk}: <span style={{color: world.levels[0].color}}>{world.title}</span>
+                </h2>
+              </div>
+              <div className="relative">
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
+                  <path d="M 5 50 Q 25 20, 50 50 T 95 50" stroke={world.levels[0].color} strokeWidth="0.5" fill="none" className="map-path" opacity="0.4" />
+                </svg>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 relative">
+                  {world.levels.map((lv, idx) => {
+                    const isUnlocked = unlocked.includes(lv.id);
+                    const isCompleted = completed.includes(lv.id);
+                    const isAvatarHere = (() => {
+                      // Avatar is on the most recent unlocked but not completed level
+                      const last = [...unlocked].sort((a,b)=>b-a).find(id => !completed.includes(id));
+                      return lv.id === last;
+                    })();
+                    return (
+                      <div key={lv.id} className="relative">
+                        {isAvatarHere && (
+                          <div className="avatar-marker absolute -top-8 left-1/2 -translate-x-1/2 z-10 text-4xl float" style={{color: profile.color}}>
+                            {profile.avatar}
+                          </div>
+                        )}
+                        <button
+                          disabled={!isUnlocked}
+                          onClick={() => { setCurrentLevel(lv); setView("level"); }}
+                          className={`w-full aspect-square rounded-2xl p-3 btn-3d transition-all flex flex-col items-center justify-center text-center relative
+                            ${isCompleted ? "bg-gradient-to-br from-[#6affb6] to-[#1de9ff]" :
+                              isUnlocked ? "bg-gradient-to-br" : "bg-[#1a2148] opacity-50"}
+                            ${lv.boss && isUnlocked ? "glow" : ""}`}
+                          style={isUnlocked && !isCompleted ? {background: `linear-gradient(135deg, ${lv.color}, ${lv.color}aa)`} : {}}
+                        >
+                          {isCompleted && <span className="absolute top-1 right-1 text-xl">✓</span>}
+                          {!isUnlocked && <span className="absolute top-1 right-1 text-base">🔒</span>}
+                          {lv.boss && <span className="absolute top-1 left-1 text-xs pixel text-white bg-black/40 px-1 rounded">BOSS</span>}
+                          <div className="text-3xl sm:text-4xl mb-1">{lv.icon}</div>
+                          <div className="text-[10px] sm:text-xs font-bold text-[#0b1023] leading-tight">{lv.title}</div>
+                          <div className="text-[9px] mt-1 opacity-70 text-[#0b1023]">Level {lv.id}</div>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {allLevelsDone && (
+          <div className="text-center mt-6 pop-in">
+            <button
+              onClick={()=>setView("certificate")}
+              className="btn-3d glow bg-gradient-to-r from-[#ffd23f] to-[#ff3b8c] text-[#0b1023] py-4 px-6 rounded-xl pixel text-xs">
+              🏆 {t("certificate")}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* ====== LEVEL VIEW ====== */
+  const LevelView = ({ level }) => {
+    const [step, setStep] = useState(0);
+    const [showFeedback, setShowFeedback] = useState(null);
+    const [attempts, setAttempts] = useState(0);
+    const [correctCount, setCorrectCount] = useState(0);
+    const [wrongQuestions, setWrongQuestions] = useState([]);
+    const [done, setDone] = useState(false);
+    const [bossTimer, setBossTimer] = useState(level.timeLimit || null);
+    const [bossStarted, setBossStarted] = useState(false);
+
+    // Boss timer
+    useEffect(() => {
+      if (!level.boss || !bossStarted || done) return;
+      if (bossTimer === null || bossTimer <= 0) return;
+      const tm = setInterval(() => {
+        setBossTimer(prev => {
+          if (prev <= 1) {
+            setDone(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(tm);
+    }, [bossStarted, bossTimer, done, level.boss]);
+
+    const card = level.cards[step];
+    const totalQuestions = level.cards.filter(c => c.type !== "info" && c.type !== "worksheet").length;
+
+    const goNext = () => {
+      setShowFeedback(null);
+      setAttempts(0);
+      if (step < level.cards.length - 1) setStep(step + 1);
+      else {
+        setDone(true);
+        handleLevelComplete(level.id, correctCount, totalQuestions, wrongQuestions);
+      }
+    };
+
+    const handleAnswer = (isCorrect, currentCard, userAnswer = "") => {
+      setAttempts(a => a + 1);
+      if (isCorrect) {
+        setCorrectCount(c => c + 1);
+        setShowFeedback({ correct: true, msg: t("correct"), explanation: currentCard.explanation });
+      } else {
+        if (!wrongQuestions.find(w => w.q === currentCard.question)) {
+          setWrongQuestions(wq => [...wq, {q: currentCard.question, given: userAnswer, correct: getCorrectDisplay(currentCard)}]);
+        }
+        let hint = currentCard.hint || "";
+        if (attempts >= 1 && currentCard.explanation) hint = currentCard.explanation;
+        setShowFeedback({ correct: false, msg: t("incorrect"), hint });
+      }
+    };
+
+    const getCorrectDisplay = (c) => {
+      if (c.type === "single") return c.options[c.correct];
+      if (c.type === "multi") return c.correct.map(i => c.options[i]).join(", ");
+      if (c.type === "input") return Array.isArray(c.correct) ? c.correct[0] : c.correct;
+      if (c.type === "match") return c.pairs.map(p => `${p.left} → ${p.right}`).join("; ");
+      if (c.type === "sort") return c.correct.join(" → ");
+      if (c.type === "fillblank") return c.correct.join(", ");
+      return "";
+    };
+
+    if (level.boss && !bossStarted && !done) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full card-glass rounded-3xl p-6 text-center pop-in border-4 border-[#ffd23f] glow">
+            <div className="text-7xl mb-4 wobble">👑</div>
+            <h1 className="pixel text-base text-[#ff3b8c] mb-2">{t("boss")}</h1>
+            <h2 className="text-white text-xl font-bold mb-3">{t("bossIntro")}</h2>
+            <p className="text-white/80 mb-4">{t("bossDescription")}</p>
+            <div className="bg-[#0b1023] rounded-xl p-3 mb-4">
+              <span className="pixel text-xs text-[#ffd23f]">⏱ {Math.floor(level.timeLimit/60)}:00</span>
+            </div>
+            <button onClick={()=>setBossStarted(true)} className="w-full btn-3d glow bg-gradient-to-r from-[#ff3b8c] to-[#ffd23f] text-[#0b1023] py-3 rounded-xl pixel text-xs mb-2">
+              {t("startBoss")} ⚔️
+            </button>
+            <button onClick={()=>setView("map")} className="w-full btn-3d bg-[#1a2148] text-white py-2 rounded-xl">
+              ← {t("backToMap")}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (done) {
+      const pct = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 100;
+      const perfect = correctCount === totalQuestions && totalQuestions > 0;
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          {perfect && <Confetti />}
+          <div className="max-w-md w-full card-glass rounded-3xl p-6 text-center pop-in border-4" style={{borderColor: level.color}}>
+            <div className="text-7xl mb-3">{perfect ? "🌟" : "✓"}</div>
+            <h1 className="pixel text-sm text-[#ffd23f] mb-2">{t("levelComplete")}</h1>
+            {perfect && <p className="text-[#6affb6] font-bold mb-2">{t("perfectLevel")}</p>}
+            <p className="text-white text-2xl font-bold mb-1">{correctCount} / {totalQuestions}</p>
+            <p className="text-white/70 mb-4">{pct}%</p>
+            <div className="bg-[#0b1023] rounded-xl p-3 mb-4">
+              <p className="pixel text-[10px] text-[#ffd23f]">+{correctCount * 50} XP</p>
+            </div>
+            <button onClick={()=>setView("map")} className="w-full btn-3d bg-[#ffd23f] text-[#0b1023] py-3 rounded-xl pixel text-xs">
+              {t("backToMap")}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen p-3 sm:p-6 max-w-3xl mx-auto pb-32">
+        {/* Progress bar */}
+        <div className="mb-4 sticky top-16 bg-[#0b1023]/95 z-20 py-2 backdrop-blur">
+          <div className="flex items-center justify-between mb-2">
+            <button onClick={()=>setView("map")} className="text-white/70 hover:text-white text-sm">← {t("backToMap")}</button>
+            {level.boss && bossTimer !== null && (
+              <span className={`pixel text-xs px-3 py-1 rounded ${bossTimer < 30 ? "bg-red-500 text-white shake" : "bg-[#ffd23f] text-[#0b1023]"}`}>
+                ⏱ {Math.floor(bossTimer/60)}:{String(bossTimer%60).padStart(2,'0')}
+              </span>
+            )}
+            <span className="text-xs text-white/70">{step+1} / {level.cards.length}</span>
+          </div>
+          <div className="h-2 bg-[#1a2148] rounded-full overflow-hidden">
+            <div className="h-full transition-all rounded-full" style={{
+              width: `${((step+1)/level.cards.length)*100}%`,
+              background: `linear-gradient(to right, ${level.color}, #ff3b8c)`
+            }} />
+          </div>
+        </div>
+
+        <div className="card-glass rounded-2xl p-4 sm:p-6 mb-4 slide-up" style={{borderColor: level.color, borderWidth: "3px"}}>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-4xl">{level.icon}</span>
+            <div>
+              <p className="text-xs text-white/60">Welt {level.world} · Level {level.id}</p>
+              <h2 className="text-white font-bold text-lg leading-tight" style={{color: level.color}}>{level.title}</h2>
+            </div>
+          </div>
+
+          <CardRenderer
+            card={card}
+            onAnswer={handleAnswer}
+            onNext={goNext}
+            showFeedback={showFeedback}
+            t={t}
+            teacherActive={teacherActive}
+          />
+        </div>
+
+        {showFeedback && (
+          <div className={`card-glass rounded-2xl p-4 mb-4 border-l-8 slide-up ${showFeedback.correct ? "border-[#6affb6]" : "border-[#ff3b8c]"}`}>
+            <p className={`pixel text-xs mb-2 ${showFeedback.correct ? "text-[#6affb6]" : "text-[#ff3b8c]"}`}>
+              {showFeedback.correct ? "✓ " + showFeedback.msg : "✗ " + showFeedback.msg}
+            </p>
+            {showFeedback.explanation && (
+              <p className="text-white/90 text-sm">{formatText(showFeedback.explanation)}</p>
+            )}
+            {showFeedback.hint && !showFeedback.correct && (
+              <p className="text-[#ffd23f] text-sm mt-1">💡 {formatText(showFeedback.hint)}</p>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {teacherActive && card.type !== "info" && card.type !== "worksheet" && (
+            <>
+              <button onClick={()=>{
+                setShowFeedback({correct: false, msg: t("solution"), explanation: getCorrectDisplay(card) + ". " + (card.explanation || "")});
+              }} className="btn-3d bg-[#a05bff] text-white px-3 py-2 rounded text-xs">👁 {t("showSolution")}</button>
+              <button onClick={goNext} className="btn-3d bg-[#a05bff] text-white px-3 py-2 rounded text-xs">⏭ {t("skipTask")}</button>
+            </>
+          )}
+          {(showFeedback?.correct || card.type === "info" || card.type === "worksheet" || teacherActive) && (
+            <button onClick={goNext} className="flex-1 btn-3d bg-[#ffd23f] text-[#0b1023] py-3 rounded-xl pixel text-xs">
+              {t("continue")} →
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ====== CARD RENDERER (Tasks) ====== */
+  const CardRenderer = ({ card, onAnswer, onNext, showFeedback, t, teacherActive }) => {
+    if (card.type === "info") return <InfoCard card={card} />;
+    if (card.type === "worksheet") return <WorksheetCard card={card} onNext={onNext} t={t} teacherActive={teacherActive} />;
+    if (card.type === "single") return <SingleChoice card={card} onAnswer={onAnswer} disabled={!!showFeedback?.correct} t={t} />;
+    if (card.type === "multi") return <MultiChoice card={card} onAnswer={onAnswer} disabled={!!showFeedback?.correct} t={t} />;
+    if (card.type === "input") return <InputAnswer card={card} onAnswer={onAnswer} disabled={!!showFeedback?.correct} t={t} />;
+    if (card.type === "match") return <MatchPairs card={card} onAnswer={onAnswer} disabled={!!showFeedback?.correct} t={t} />;
+    if (card.type === "sort") return <SortItems card={card} onAnswer={onAnswer} disabled={!!showFeedback?.correct} t={t} />;
+    if (card.type === "fillblank") return <FillBlank card={card} onAnswer={onAnswer} disabled={!!showFeedback?.correct} t={t} />;
+    return null;
+  };
+
+  const InfoCard = ({ card }) => (
+    <div className="text-center">
+      <h3 className="pixel text-xs sm:text-sm text-[#ffd23f] mb-3">{card.title}</h3>
+      <div className="text-white/90 leading-relaxed text-base sm:text-lg whitespace-pre-line">
+        {formatText(card.text)}
+      </div>
+    </div>
+  );
+
+  const WorksheetCard = ({ card, onNext, t, teacherActive }) => {
+    const [secs, setSecs] = useState(15);
+    useEffect(() => {
+      if (teacherActive) { setSecs(0); return; }
+      const tm = setInterval(() => setSecs(s => Math.max(0, s-1)), 1000);
+      return () => clearInterval(tm);
+    }, [teacherActive]);
+    return (
+      <div className="text-center">
+        <div className="text-5xl mb-3 float">📝</div>
+        <h3 className="pixel text-xs text-[#ffd23f] mb-3">{t("completeWorksheet")}</h3>
+        <p className="text-white/90 mb-4 leading-relaxed">{card.text}</p>
+        <div className="bg-[#0b1023] rounded-xl p-4 inline-block">
+          {secs > 0 ? (
+            <>
+              <p className="text-white/70 text-sm">{t("waitTime")}</p>
+              <p className="pixel text-2xl text-[#ffd23f]">{secs}</p>
+              <p className="text-white/50 text-xs">{t("seconds")}</p>
+            </>
+          ) : (
+            <p className="pixel text-xs text-[#6affb6]">✓ {t("continue")}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const SingleChoice = ({ card, onAnswer, disabled, t }) => {
+    const [selected, setSelected] = useState(null);
+    return (
+      <div>
+        <h3 className="text-white text-lg mb-4 leading-snug">{formatText(card.question)}</h3>
+        <div className="space-y-2">
+          {card.options.map((opt, i) => (
+            <button key={i}
+              disabled={disabled}
+              onClick={() => { setSelected(i); onAnswer(i === card.correct, card, opt); }}
+              className={`w-full text-left p-3 rounded-xl btn-3d border-2 transition-all
+                ${selected === i ? (i === card.correct ? "bg-[#6affb6] text-[#0b1023] border-[#6affb6]" : "bg-[#ff3b8c] text-white border-[#ff3b8c] shake") : "bg-[#0b1023] text-white border-[#ffd23f]/30 hover:border-[#ffd23f]"}`}>
+              <span className="pixel text-[10px] mr-2 opacity-60">[{String.fromCharCode(65+i)}]</span>
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const MultiChoice = ({ card, onAnswer, disabled, t }) => {
+    const [selected, setSelected] = useState([]);
+    const [submitted, setSubmitted] = useState(false);
+    const toggle = (i) => {
+      if (submitted) return;
+      setSelected(s => s.includes(i) ? s.filter(x=>x!==i) : [...s, i]);
+    };
+    const check = () => {
+      const sortedSel = [...selected].sort();
+      const sortedCor = [...card.correct].sort();
+      const correct = JSON.stringify(sortedSel) === JSON.stringify(sortedCor);
+      setSubmitted(true);
+      onAnswer(correct, card, selected.map(i => card.options[i]).join(", "));
+    };
+    return (
+      <div>
+        <h3 className="text-white text-lg mb-2">{formatText(card.question)}</h3>
+        <p className="text-white/60 text-xs mb-3">{t("selectAll")}</p>
+        <div className="space-y-2 mb-3">
+          {card.options.map((opt, i) => (
+            <button key={i} onClick={()=>toggle(i)} disabled={submitted && disabled}
+              className={`w-full text-left p-3 rounded-xl btn-3d border-2 transition-all
+                ${submitted && card.correct.includes(i) ? "bg-[#6affb6] text-[#0b1023] border-[#6affb6]" :
+                  submitted && selected.includes(i) ? "bg-[#ff3b8c] text-white border-[#ff3b8c]" :
+                  selected.includes(i) ? "bg-[#ffd23f] text-[#0b1023] border-[#ffd23f]" : "bg-[#0b1023] text-white border-[#ffd23f]/30"}`}>
+              <span className="mr-2">{selected.includes(i) ? "☑" : "☐"}</span>
+              {opt}
+            </button>
+          ))}
+        </div>
+        {!submitted && (
+          <button onClick={check} disabled={selected.length===0}
+            className="w-full btn-3d bg-[#ffd23f] text-[#0b1023] py-2 rounded-xl pixel text-xs disabled:opacity-40">
+            {t("submit")}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const InputAnswer = ({ card, onAnswer, disabled, t }) => {
+    const [val, setVal] = useState("");
+    const [submitted, setSubmitted] = useState(false);
+    const check = () => {
+      const v = val.trim().toLowerCase().replace(/\s/g, "");
+      const corrects = (Array.isArray(card.correct) ? card.correct : [card.correct]).map(c => String(c).toLowerCase().replace(/\s/g, ""));
+      const ok = corrects.includes(v);
+      setSubmitted(true);
+      onAnswer(ok, card, val);
+    };
+    return (
+      <div>
+        <h3 className="text-white text-lg mb-3">{formatText(card.question)}</h3>
+        <input type="text" value={val} onChange={(e)=>setVal(e.target.value)}
+          disabled={submitted && disabled}
+          onKeyDown={(e)=>e.key==="Enter" && val.trim() && check()}
+          placeholder={t("yourAnswer")}
+          className="w-full px-4 py-3 bg-[#0b1023] border-2 border-[#ffd23f] rounded-xl text-white text-lg mb-3" />
+        {!submitted && (
+          <button onClick={check} disabled={!val.trim()}
+            className="w-full btn-3d bg-[#ffd23f] text-[#0b1023] py-2 rounded-xl pixel text-xs disabled:opacity-40">
+            {t("submit")}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  /* MATCHING (drag-free, button based) */
+  const MatchPairs = ({ card, onAnswer, disabled, t }) => {
+    const [pairs] = useState(card.pairs);
+    const [shuffledRights] = useState(() => [...card.pairs.map(p=>p.right)].sort(()=>Math.random()-0.5));
+    const [assignments, setAssignments] = useState({}); // leftIndex -> rightValue
+    const [selectedRight, setSelectedRight] = useState(null);
+    const [submitted, setSubmitted] = useState(false);
+
+    const assign = (leftIdx) => {
+      if (submitted) return;
+      if (selectedRight === null) return;
+      // remove this right from any other slot
+      const newA = {...assignments};
+      Object.keys(newA).forEach(k => { if (newA[k] === selectedRight) delete newA[k]; });
+      newA[leftIdx] = selectedRight;
+      setAssignments(newA);
+      setSelectedRight(null);
+    };
+    const check = () => {
+      const ok = pairs.every((p, i) => assignments[i] === p.right);
+      setSubmitted(true);
+      onAnswer(ok, card, Object.entries(assignments).map(([i,v])=>`${pairs[i].left}=${v}`).join(", "));
+    };
+    const usedRights = Object.values(assignments);
+    return (
+      <div>
+        <h3 className="text-white text-lg mb-3">{card.question}</h3>
+        <p className="text-white/60 text-xs mb-3">{t("drag")}</p>
+        <div className="space-y-2 mb-3">
+          {pairs.map((p, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <div className="bg-[#1a2148] border-2 border-[#1de9ff] text-[#1de9ff] px-3 py-2 rounded-xl flex-1 font-bold text-sm">
+                {p.left}
+              </div>
+              <span className="text-white">→</span>
+              <button onClick={()=>assign(i)} disabled={submitted}
+                className={`flex-1 px-3 py-2 rounded-xl border-2 text-left text-sm
+                  ${assignments[i] ? (submitted && assignments[i]!==p.right ? "bg-[#ff3b8c] border-[#ff3b8c] text-white" :
+                    submitted ? "bg-[#6affb6] border-[#6affb6] text-[#0b1023]" : "bg-[#ffd23f] border-[#ffd23f] text-[#0b1023]")
+                  : "bg-[#0b1023] border-dashed border-[#ffd23f]/40 text-white/50"}`}>
+                {assignments[i] || "___"}
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="text-white/70 text-xs mb-2">Klicke einen Begriff, dann das passende Feld:</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {shuffledRights.filter(r => !usedRights.includes(r)).map((r, i) => (
+            <button key={i} onClick={()=>setSelectedRight(r)} disabled={submitted}
+              className={`px-3 py-2 rounded-xl border-2 text-sm btn-3d
+                ${selectedRight===r ? "bg-[#ffd23f] border-[#ffd23f] text-[#0b1023]" : "bg-[#0b1023] border-[#ffd23f]/30 text-white"}`}>
+              {r}
+            </button>
+          ))}
+        </div>
+        {!submitted && (
+          <button onClick={check} disabled={Object.keys(assignments).length !== pairs.length}
+            className="w-full btn-3d bg-[#ffd23f] text-[#0b1023] py-2 rounded-xl pixel text-xs disabled:opacity-40">
+            {t("submit")}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  /* SORT (Buttons up/down) */
+  const SortItems = ({ card, onAnswer, disabled, t }) => {
+    const [items, setItems] = useState(() => [...card.items].sort(()=>Math.random()-0.5));
+    const [submitted, setSubmitted] = useState(false);
+    const move = (i, dir) => {
+      if (submitted) return;
+      const j = i + dir;
+      if (j<0 || j>=items.length) return;
+      const arr = [...items];
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      setItems(arr);
+    };
+    const check = () => {
+      const ok = JSON.stringify(items) === JSON.stringify(card.correct);
+      setSubmitted(true);
+      onAnswer(ok, card, items.join(" → "));
+    };
+    return (
+      <div>
+        <h3 className="text-white text-lg mb-3">{card.question}</h3>
+        <p className="text-white/60 text-xs mb-3">{t("sort")}</p>
+        <div className="space-y-2 mb-3">
+          {items.map((it, i) => (
+            <div key={it} className={`flex items-center gap-2 p-2 rounded-xl border-2
+              ${submitted ? (it === card.correct[i] ? "bg-[#6affb6]/20 border-[#6affb6]" : "bg-[#ff3b8c]/20 border-[#ff3b8c]") : "bg-[#0b1023] border-[#ffd23f]/30"}`}>
+              <span className="pixel text-[10px] text-[#ffd23f] w-6">{i+1}.</span>
+              <span className="flex-1 text-white">{it}</span>
+              <button onClick={()=>move(i,-1)} disabled={submitted || i===0} className="btn-3d bg-[#1a2148] text-white w-8 h-8 rounded disabled:opacity-30">↑</button>
+              <button onClick={()=>move(i,1)} disabled={submitted || i===items.length-1} className="btn-3d bg-[#1a2148] text-white w-8 h-8 rounded disabled:opacity-30">↓</button>
+            </div>
+          ))}
+        </div>
+        {!submitted && (
+          <button onClick={check} className="w-full btn-3d bg-[#ffd23f] text-[#0b1023] py-2 rounded-xl pixel text-xs">{t("submit")}</button>
+        )}
+      </div>
+    );
+  };
+
+  const FillBlank = ({ card, onAnswer, disabled, t }) => {
+    const [val, setVal] = useState("");
+    const [submitted, setSubmitted] = useState(false);
+    const check = () => {
+      const v = val.trim().toLowerCase();
+      const ok = card.correct.map(c => String(c).toLowerCase()).includes(v);
+      setSubmitted(true);
+      onAnswer(ok, card, val);
+    };
+    const parts = card.template.split("___");
+    return (
+      <div>
+        <h3 className="text-white text-lg mb-3">{card.question}</h3>
+        <p className="text-white/60 text-xs mb-3">{t("fillBlank")}</p>
+        <div className="bg-[#0b1023] p-4 rounded-xl mb-3 text-lg text-white text-center">
+          {parts[0]}
+          <input type="text" value={val} onChange={(e)=>setVal(e.target.value)}
+            disabled={submitted && disabled}
+            className={`inline-block w-20 px-2 py-1 mx-1 bg-[#1a2148] border-2 rounded text-center
+              ${submitted ? (card.correct.map(c=>String(c).toLowerCase()).includes(val.trim().toLowerCase()) ? "border-[#6affb6] text-[#6affb6]" : "border-[#ff3b8c] text-[#ff3b8c]") : "border-[#ffd23f] text-[#ffd23f]"}`}
+            onKeyDown={(e)=>e.key==="Enter" && val.trim() && check()} />
+          {parts[1]}
+        </div>
+        {!submitted && (
+          <button onClick={check} disabled={!val.trim()} className="w-full btn-3d bg-[#ffd23f] text-[#0b1023] py-2 rounded-xl pixel text-xs disabled:opacity-40">
+            {t("submit")}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  /* ====== CERTIFICATE ====== */
+  const CertificateView = () => {
+    const certRef = useRef(null);
+    const today = new Date().toLocaleDateString(lang === "de" ? "de-DE" : "en-GB");
+
+    const downloadPDF = async () => {
+      try {
+        const el = certRef.current;
+        if (!el) return;
+        const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#0b1023" });
+        const imgData = canvas.toDataURL("image/png");
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+        const w = pdf.internal.pageSize.getWidth();
+        const h = pdf.internal.pageSize.getHeight();
+        pdf.addImage(imgData, "PNG", 0, 0, w, h);
+
+        // Add stats page
+        pdf.addPage();
+        pdf.setFontSize(20);
+        pdf.text("Stochastik Quest – Ergebnisse", 20, 25);
+        pdf.setFontSize(12);
+        pdf.text(`Name: ${profile.name}`, 20, 40);
+        pdf.text(`Datum: ${today}`, 20, 48);
+        pdf.text(`Gesamt-XP: ${xp}`, 20, 56);
+        pdf.text(`Richtige Antworten: ${stats.correct}`, 20, 64);
+        pdf.text(`Falsche Antworten: ${stats.wrong}`, 20, 72);
+
+        let y = 88;
+        pdf.setFontSize(14);
+        pdf.text("Level-Übersicht:", 20, y); y += 8;
+        pdf.setFontSize(10);
+        stats.history.forEach(h => {
+          if (y > 190) { pdf.addPage(); y = 20; }
+          pdf.text(`Level ${h.levelId} – ${h.levelTitle}: ${h.correctCount}/${h.totalCount}`, 20, y);
+          y += 6;
+          if (h.wrongQuestions && h.wrongQuestions.length) {
+            h.wrongQuestions.forEach(wq => {
+              if (y > 190) { pdf.addPage(); y = 20; }
+              const text1 = `  ✗ Frage: ${wq.q.substring(0, 90)}`;
+              const text2 = `     Richtig: ${String(wq.correct).substring(0, 90)}`;
+              pdf.text(text1, 20, y); y += 5;
+              pdf.text(text2, 20, y); y += 7;
+            });
+          }
+        });
+
+        pdf.save(`Stochastik_Zertifikat_${profile.name.replace(/\s/g,'_')}.pdf`);
+      } catch (e) {
+        console.error(e);
+        alert("PDF-Export fehlgeschlagen: " + e.message);
+      }
+    };
+
+    return (
+      <div className="min-h-screen p-3 sm:p-6 max-w-4xl mx-auto pb-24">
+        <Confetti />
+        <div ref={certRef} className="bg-gradient-to-br from-[#1a2148] to-[#0b1023] rounded-3xl p-6 sm:p-10 border-8 border-[#ffd23f] relative overflow-hidden pop-in">
+          <div className="absolute -top-4 -left-4 text-6xl opacity-20">🎲</div>
+          <div className="absolute -bottom-4 -right-4 text-6xl opacity-20">🎲</div>
+          <div className="absolute top-4 right-4 text-3xl">⭐</div>
+          <div className="absolute top-4 left-4 text-3xl">⭐</div>
+          <div className="text-center">
+            <div className="text-7xl mb-3 wobble">🏆</div>
+            <h1 className="pixel text-base sm:text-2xl text-[#ffd23f] mb-3">{t("certTitle")}</h1>
+            <div className="border-t-2 border-b-2 border-[#ffd23f]/30 py-4 my-4">
+              <p className="text-white/70 text-sm mb-1">{t("certDescription")}</p>
+              <p className="retro text-3xl sm:text-5xl text-white mb-2" style={{color: profile.color}}>
+                {profile.avatar} {profile.name}
+              </p>
+              <p className="text-white/70 text-sm italic">{t("certFor")}.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 my-6">
+              <div className="bg-[#0b1023]/60 rounded-xl p-3">
+                <div className="text-2xl mb-1">⭐</div>
+                <p className="pixel text-[10px] text-[#ffd23f]">{xp} XP</p>
+              </div>
+              <div className="bg-[#0b1023]/60 rounded-xl p-3">
+                <div className="text-2xl mb-1">✓</div>
+                <p className="pixel text-[10px] text-[#6affb6]">{stats.correct}</p>
+              </div>
+              <div className="bg-[#0b1023]/60 rounded-xl p-3">
+                <div className="text-2xl mb-1">✗</div>
+                <p className="pixel text-[10px] text-[#ff3b8c]">{stats.wrong}</p>
+              </div>
+            </div>
+            <p className="text-white/60 text-xs">{today}</p>
+            <p className="pixel text-[10px] text-[#1de9ff] mt-2">— Stochastik Quest —</p>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <button onClick={downloadPDF}
+            className="w-full btn-3d glow bg-gradient-to-r from-[#ffd23f] to-[#ff3b8c] text-[#0b1023] py-4 rounded-xl pixel text-xs">
+            {t("downloadPDF")}
+          </button>
+          <button onClick={()=>setView("map")}
+            className="w-full btn-3d bg-[#1a2148] text-white py-3 rounded-xl border border-[#ffd23f]/30">
+            ← {t("backToMap")}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  /* ====== RENDER ROOT ====== */
+  return (
+    <div className="min-h-screen text-white">
+      {view !== "welcome" && <Header />}
+      {view === "welcome" && <WelcomeView />}
+      {view === "map" && <MapView />}
+      {view === "level" && currentLevel && <LevelView level={currentLevel} key={currentLevel.id} />}
+      {view === "certificate" && <CertificateView />}
+      <SunPasswordModal />
+      <TeacherModal />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
