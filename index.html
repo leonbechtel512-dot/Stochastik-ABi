@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>🎲 Stochastik Quest – Welt des Zufalls</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -170,9 +172,17 @@
 </head>
 <body>
 <div class="starfield"></div>
-<div id="root" class="relative z-10"></div>
+<div id="root" class="relative z-10">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#ffd23f;font-family:'Press Start 2P',monospace;font-size:14px;text-align:center;padding:20px;">
+    <div>
+      <div style="font-size:48px;margin-bottom:20px;animation:float 3s ease-in-out infinite;">🎲</div>
+      <div>Lade Stochastik Quest...</div>
+      <div style="font-size:10px;margin-top:15px;color:#1de9ff;">React wird kompiliert</div>
+    </div>
+  </div>
+</div>
 
-<script type="text/babel" data-type="module">
+<script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 /* =========================================================
@@ -1794,8 +1804,14 @@ function App() {
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
+const rootEl = document.getElementById("root");
+try {
+  const root = ReactDOM.createRoot(rootEl);
+  root.render(<App />);
+} catch (err) {
+  rootEl.innerHTML = '<div style="color:#fff;padding:30px;font-family:sans-serif;"><h2>Fehler beim Laden</h2><pre style="background:#1a2148;padding:15px;border-radius:8px;overflow:auto;">' + (err && err.stack ? err.stack : err) + '</pre><p>Bitte Internetverbindung prüfen (für CDN-Bibliotheken) und Seite neu laden.</p></div>';
+  console.error(err);
+}
 </script>
 </body>
 </html>
